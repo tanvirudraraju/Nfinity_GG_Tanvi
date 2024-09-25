@@ -1,0 +1,148 @@
+from fastapi import FastAPI, HTTPException
+from pydantic import BaseModel
+from typing import List, Optional
+import pymysql
+from GGUtils import GGUtils
+
+# FastAPI app initialization
+app = FastAPI()
+
+class StudentParticipant(BaseModel):
+    ParticipantTypeId: Optional[int] = None
+    Pronoun: Optional[str] = None
+    FirstName: Optional[str] = None
+    LastName: Optional[str] = None
+    Email: Optional[str] = None
+    Email2: Optional[str] = None
+    Phone: Optional[str] = None
+    Street: Optional[str] = None
+    City: Optional[str] = None
+    State_Id: Optional[int] = None
+    Zip: Optional[str] = None
+    region: Optional[int] = None
+    Country: Optional[str] = None
+    ClassOfYear: Optional[str] = None
+    DateOfBirth: Optional[str] = None
+    Gender: Optional[str] = None
+
+
+
+
+# connect to database using  GGUtils class
+def db_connection():
+    return GGUtils.get_db_connection()
+
+
+
+# create a new StudentParticipant
+@app.post("/participant", response_model=StudentParticipant)
+def create_participant(participant: StudentParticipant):
+    connection = db_connection()
+    cursor = connection.cursor()
+    
+    sql = '''
+    INSERT INTO StudentParticipant 
+    (ParticipantTypeId, Pronoun, FirstName, LastName, Email, Email2, Phone, Street, City, State_Id, Zip, region, Country, 
+     ClassOfYear, DateOfBirth, Gender)
+    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+    '''
+    values = (
+        participant.ParticipantTypeId, participant.Pronoun, participant.FirstName, participant.LastName, participant.Email, participant.Email2,
+        participant.Phone, participant.Street, participant.City, participant.State_Id, participant.Zip, participant.region, participant.Country, 
+        participant.ClassOfYear, participant.DateOfBirth, participant.Gender
+    )
+    
+    cursor.execute(sql, values)
+    connection.commit()
+    new_id = cursor.lastrowid
+    
+    cursor.close()
+    connection.close()
+    
+    return {**participant.dict(), "ParticipantId": new_id}
+
+# read for all participants
+@app.get("/participants", response_model=List[StudentParticipant])
+def get_participants():
+    connection = db_connection()
+    cursor = connection.cursor()
+    
+    cursor.execute("SELECT * FROM StudentParticipant")
+    participants = cursor.fetchall()
+    
+    cursor.close()
+    connection.close()
+    
+    return participants
+
+# read for one participant
+@app.get("/participant/{participant_id}", response_model=StudentParticipant)
+def get_participant(participant_id: int):
+    connection = db_connection()
+    cursor = connection.cursor()
+    
+    cursor.execute("SELECT * FROM StudentParticipant WHERE ParticipantId = %s", (participant_id,))
+    participant = cursor.fetchone()
+    
+    cursor.close()
+    connection.close()
+    
+    if not participant:
+        raise HTTPException(status_code=404, detail="Participant not found")
+    
+    return participant
+
+# updating a participant
+@app.put("/participant/{participant_id}", response_model=StudentParticipant)
+def update_participant(participant_id: int, participant: StudentParticipant):
+    connection = db_connection()
+    cursor = connection.cursor()
+    
+    sql = '''
+    UPDATE StudentParticipant SET
+    ParticipantTypeId = %s, Pronoun = %s, FirstName = %s, LastName = %s, Email = %s, Email2 = %s, Phone = %s, 
+    Street = %s, City = %s, State = %s, Zip = %s, region = %s, Country = %s, ClassOfYear = %s, DateOfBirth = %s, 
+    Gender = %s, Ethnicity = %s, Gpa = %s, Status = %s, ParticipantOrgId = %s, Nationality = %s, comment = %s, 
+    IsPassportAvailable = %s, PassportNumber = %s, FirstLegalName = %s, SurName = %s, PassportExpiry = %s, 
+    RedFlag = %s, RegionId = %s, OtherGender = %s, UsGreencard = %s, EthnicitySelfDescribe = %s, 
+    StudentSignaturePath = %s, GuardianSignaturePath = %s, LiabilityDocPath = %s, RoomingPreference = %s, 
+    StudentSchoolName = %s
+    WHERE ParticipantId = %s
+    '''
+    values = (
+        participant.ParticipantTypeId, participant.Pronoun, participant.FirstName, participant.LastName, participant.Email, participant.Email2,
+        participant.Phone, participant.Street, participant.City, participant.State, participant.Zip, participant.region, participant.Country, 
+        participant.ClassOfYear, participant.DateOfBirth, participant.Gender, participant.Ethnicity, participant.Gpa, participant.Status,
+        participant.ParticipantOrgId, participant.Nationality, participant.comment, participant.IsPassportAvailable, participant.PassportNumber,
+        participant.FirstLegalName, participant.SurName, participant.PassportExpiry, participant.RedFlag, participant.RegionId, 
+        participant.OtherGender, participant.UsGreencard, participant.EthnicitySelfDescribe, participant.StudentSignaturePath, 
+        participant.GuardianSignaturePath, participant.LiabilityDocPath, participant.RoomingPreference, participant.StudentSchoolName, 
+        participant_id
+    )
+    
+    cursor.execute(sql, values)
+    connection.commit()
+    
+    cursor.close()
+    connection.close()
+    
+    return {**participant.dict(), "ParticipantId": participant_id}
+
+# deleting a participant
+@app.delete("/participant/{participant_id}", response_model=dict)
+def delete_participant(participant_id: int):
+    connection = db_connection()
+    cursor = connection.cursor()
+    
+    cursor.execute("DELETE FROM StudentParticipant WHERE ParticipantId = %s", (participant_id,))
+    connection.commit()
+    
+    cursor.close()
+    connection.close()
+    
+    return {"message": "Participant deleted successfully"}
+
+# uvicorn to run the application
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=8000)
