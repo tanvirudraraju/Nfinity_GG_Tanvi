@@ -1,0 +1,16 @@
+import pymysql
+
+class GGUtils:
+    @staticmethod
+    def get_db_connection():
+        return pymysql.connect(
+            host="localhost",
+            user="root",
+            password="password",
+            db="your_database",
+            cursorclass=pymysql.cursors.DictCursor
+        )
+
+# Database connection function using GGUtils
+def db_connection():
+    return GGUtils.get_db_connection()
